@@ -1,24 +1,23 @@
 from docx import Document
 from docx.shared import Pt, Cm
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_BREAK
 from docx.oxml import OxmlElement, ns
 import os
 
 class APAFormatter:
-    def __init__(self, file_path, version, fuente_seleccionada, paragraphs_data, style_map_inverse):
+    def __init__(self, file_path, version, fuente_seleccionada, paragraphs_data, style_map_inverse, nuevas_referencias=None):
         self.file_path = file_path
         self.version = version
         self.paragraphs_data = paragraphs_data
         self.style_map_inverse = style_map_inverse
+        self.nuevas_referencias = nuevas_referencias if nuevas_referencias else []
         self.doc = Document(file_path)
         
-        # Procesar la fuente elegida en la interfaz (Ej: "Times New Roman 12" -> "Times New Roman", 12)
         partes_fuente = fuente_seleccionada.rsplit(" ", 1)
         self.font_name = partes_fuente[0]
         self.font_size = int(partes_fuente[1])
 
     def crear_numero_pagina(self, run):
-        # Funcion avanzada para inyectar el campo de "PAGE" en el XML del encabezado
         fldChar1 = OxmlElement('w:fldChar')
         fldChar1.set(ns.qn('w:fldCharType'), 'begin')
         
@@ -34,16 +33,13 @@ class APAFormatter:
         run._r.append(fldChar2)
 
     def aplicar_reglas_globales(self):
-        # 1. Margenes estandar APA
         for section in self.doc.sections:
             section.top_margin = Cm(2.54)
             section.bottom_margin = Cm(2.54)
             section.left_margin = Cm(2.54)
             section.right_margin = Cm(2.54)
             
-            # 2. Paginacion en el encabezado superior derecho
             header = section.header
-            # Limpiar encabezado previo
             for p in header.paragraphs:
                 p.text = ""
             
@@ -54,7 +50,6 @@ class APAFormatter:
             run_header.font.size = Pt(self.font_size)
             self.crear_numero_pagina(run_header)
 
-        # 3. Configuracion del estilo base normal
         style = self.doc.styles['Normal']
         font = style.font
         font.name = self.font_name
@@ -66,7 +61,6 @@ class APAFormatter:
 
     def formatear_bloque(self, paragraph, estilo_espanol):
         pf = paragraph.paragraph_format
-        # Reset de sangrias
         pf.first_line_indent = 0
         pf.left_indent = 0
         pf.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -84,12 +78,10 @@ class APAFormatter:
                 pf.first_line_indent = Cm(1.27)
             
             elif estilo_espanol == "Referencia":
-                # Sangria Francesa: Todo el parrafo se mueve a la derecha, la primera linea retrocede
                 pf.left_indent = Cm(1.27)
                 pf.first_line_indent = Cm(-1.27)
                 
             elif estilo_espanol == "Cita en Bloque":
-                # Todo el parrafo sangrado a 1.27 cm
                 pf.left_indent = Cm(1.27)
                 pf.first_line_indent = 0
             
@@ -111,6 +103,7 @@ class APAFormatter:
     def procesar(self, solo_indices=None):
         self.aplicar_reglas_globales()
         
+        # Procesar parrafos existentes
         for p_data in self.paragraphs_data:
             idx = p_data["id"]
             if solo_indices is not None and idx not in solo_indices:
@@ -118,6 +111,20 @@ class APAFormatter:
                 
             real_paragraph = self.doc.paragraphs[idx]
             self.formatear_bloque(real_paragraph, p_data["current_style"])
+
+        # Inyectar nuevas referencias al final del documento
+        if self.nuevas_referencias:
+            # Añadir salto de pagina para la seccion de bibliografia
+            self.doc.add_page_break()
+            
+            # Añadir titulo de referencias
+            p_titulo = self.doc.add_paragraph("Referencias")
+            self.formatear_bloque(p_titulo, "Título 1")
+            
+            # Añadir cada referencia con sangria francesa
+            for ref in self.nuevas_referencias:
+                p_ref = self.doc.add_paragraph(ref)
+                self.formatear_bloque(p_ref, "Referencia")
 
         nombre_base, ext = os.path.splitext(self.file_path)
         ruta_salida = f"{nombre_base}_APA_PROCESADO{ext}"

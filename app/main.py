@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import filedialog
 import tkinter.messagebox as messagebox
 import math
+from PIL import Image
 
 from core.document_parser import DocumentParser
 from core.apa_formatter import APAFormatter
@@ -11,7 +12,6 @@ from ui.apa_guide import APAGuideWindow
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
-# Se agregaron los nuevos formatos estructurales
 TRADUCCION_ESTILOS = {
     "Normal": "Párrafo Normal",
     "Heading 1": "Título 1",
@@ -29,40 +29,75 @@ class DocumentsGoldenSuite(ctk.CTk):
     def __init__(self):
         super().__init__()
 
+        self.title("Documents Golden Suite")
+        self.geometry("1100x700")
+        self.minsize(950, 600)
+
+        # Configuracion de la cuadricula principal (1 Fila, 2 Columnas)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1) # Columna 1 se expande (Contenido Principal)
+
+        # ==========================================
+        # SIDEBAR (Barra Lateral)
+        # ==========================================
+        self.sidebar_frame = ctk.CTkFrame(self, width=220, corner_radius=0)
+        self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
+        self.sidebar_frame.grid_rowconfigure(4, weight=1) # Empuja el selector de temas hacia abajo
+
+        # Espacio para el Logo (Instrucciones de como cambiarlo mas abajo)
+        logo_img = ctk.CTkImage(
+            light_image=Image.open("assets/logo.png"),
+            dark_image=Image.open("assets/logo.png"), 
+            size=(120, 120) # Tamaño del logo en pixeles
+        )
+        
+        self.lbl_logo = ctk.CTkLabel(self.sidebar_frame, text="", image=logo_img)
+        self.lbl_logo.grid(row=0, column=0, padx=20, pady=(30, 20))
+
+        # Botones de Navegacion de la Suite
+        self.btn_nav_apa = ctk.CTkButton(self.sidebar_frame, text="Formateador APA", fg_color=("gray75", "gray25"), text_color=("black", "white"), anchor="w")
+        self.btn_nav_apa.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
+
+        self.btn_nav_pdf = ctk.CTkButton(self.sidebar_frame, text="Conversor PDF (Pronto)", state="disabled", fg_color="transparent", anchor="w")
+        self.btn_nav_pdf.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
+
+        # Selector de Tema movido al Sidebar
+        self.lbl_tema = ctk.CTkLabel(self.sidebar_frame, text="Apariencia:", anchor="w")
+        self.lbl_tema.grid(row=5, column=0, padx=20, pady=(10, 0), sticky="ew")
+        self.theme_menu = ctk.CTkOptionMenu(self.sidebar_frame, values=["Sistema", "Oscuro", "Claro"], command=self.cambiar_tema)
+        self.theme_menu.grid(row=6, column=0, padx=20, pady=(5, 20), sticky="ew")
+        self.theme_menu.set("Sistema")
+
+        # ==========================================
+        # AREA DE CONTENIDO (Modulo APA)
+        # ==========================================
+        self.main_content = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
+        self.main_content.grid(row=0, column=1, sticky="nsew")
+        self.main_content.grid_columnconfigure(0, weight=1)
+        self.main_content.grid_rowconfigure(3, weight=1) # El Visor se expande
+
+        # Variables del Modulo APA
         self.datos_documento = []
+        self.nuevas_referencias = []
         self.parrafos_por_pagina = 10
         self.ventana_guia = None
 
-        self.title("Documents Golden Suite - Formateador APA")
-        self.geometry("950x650")
-        self.minsize(850, 500)
-
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(3, weight=1)
-
-        # 1. Cabecera
-        self.top_frame = ctk.CTkFrame(self, fg_color="transparent")
+        # 1. Cabecera del Modulo
+        self.top_frame = ctk.CTkFrame(self.main_content, fg_color="transparent")
         self.top_frame.grid(row=0, column=0, padx=20, pady=(20, 5), sticky="ew")
         self.top_frame.grid_columnconfigure(0, weight=1)
 
-        self.lbl_titulo = ctk.CTkLabel(self.top_frame, text="Formateador APA Auto", font=ctk.CTkFont(size=24, weight="bold"))
+        self.lbl_titulo = ctk.CTkLabel(self.top_frame, text="Herramienta APA Automática", font=ctk.CTkFont(size=24, weight="bold"))
         self.lbl_titulo.grid(row=0, column=0, sticky="w")
 
-        self.top_controls = ctk.CTkFrame(self.top_frame, fg_color="transparent")
-        self.top_controls.grid(row=0, column=1, sticky="e")
-        
-        self.btn_guia = ctk.CTkButton(self.top_controls, text="Ver Guía APA", command=self.abrir_guia_apa, fg_color="transparent", border_width=1, text_color=("black", "white"))
-        self.btn_guia.pack(side="left", padx=10)
+        self.btn_guia = ctk.CTkButton(self.top_frame, text="Ver Guía APA", command=self.abrir_guia_apa, fg_color="transparent", border_width=1, text_color=("black", "white"))
+        self.btn_guia.grid(row=0, column=1, sticky="e")
 
-        self.theme_menu = ctk.CTkOptionMenu(self.top_controls, values=["Sistema", "Oscuro", "Claro"], command=self.cambiar_tema, width=120)
-        self.theme_menu.pack(side="left")
-        self.theme_menu.set("Sistema")
-
-        self.lbl_subtitulo = ctk.CTkLabel(self, text="Selecciona un documento .docx para analizar y aplicar formato", text_color="gray")
+        self.lbl_subtitulo = ctk.CTkLabel(self.main_content, text="Selecciona un documento .docx para analizar y aplicar formato", text_color="gray")
         self.lbl_subtitulo.grid(row=1, column=0, padx=20, pady=(0, 10), sticky="ew")
 
         # 2. Barra de Paginacion
-        self.paginacion_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.paginacion_frame = ctk.CTkFrame(self.main_content, fg_color="transparent")
         self.paginacion_frame.grid(row=2, column=0, padx=20, pady=(0, 5), sticky="ew")
         self.paginacion_frame.grid_columnconfigure(4, weight=1) 
         
@@ -82,25 +117,35 @@ class DocumentsGoldenSuite(ctk.CTk):
         self.btn_restaurar.grid(row=0, column=5, sticky="e")
 
         # 3. Visor Logico
-        self.visor_frame = ctk.CTkScrollableFrame(self, label_text="Visor de Estructura del Documento")
+        self.visor_frame = ctk.CTkScrollableFrame(self.main_content, label_text="Visor de Estructura del Documento")
         self.visor_frame.grid(row=3, column=0, padx=20, pady=5, sticky="nsew")
 
         self.lbl_placeholder = ctk.CTkLabel(self.visor_frame, text="Carga un documento para visualizar la estructura aquí.")
         self.lbl_placeholder.pack(pady=50)
 
-        # 4. Panel Inferior Mejorado (Seleccion de Version y Fuente)
-        self.panel_inferior = ctk.CTkFrame(self, fg_color="transparent")
-        self.panel_inferior.grid(row=4, column=0, padx=20, pady=20, sticky="ew")
+        # 4. NUEVO: Inyeccion de Referencias Bibliograficas
+        self.ref_frame = ctk.CTkFrame(self.main_content, fg_color="transparent")
+        self.ref_frame.grid(row=4, column=0, padx=20, pady=10, sticky="ew")
+        self.ref_frame.grid_columnconfigure(0, weight=1)
+
+        self.txt_nueva_ref = ctk.CTkEntry(self.ref_frame, placeholder_text="Pega aquí una referencia bibliográfica para añadirla a la última hoja...")
+        self.txt_nueva_ref.grid(row=0, column=0, padx=(0, 10), sticky="ew")
+
+        self.btn_add_ref = ctk.CTkButton(self.ref_frame, text="+ Añadir Referencia", command=self.añadir_referencia_lista, fg_color="#B8860B", hover_color="#8B6508")
+        self.btn_add_ref.grid(row=0, column=1, sticky="e")
+
+        # 5. Panel Inferior (Controles Principales)
+        self.panel_inferior = ctk.CTkFrame(self.main_content, fg_color="transparent")
+        self.panel_inferior.grid(row=5, column=0, padx=20, pady=(10, 20), sticky="ew")
         self.panel_inferior.grid_columnconfigure(2, weight=1)
 
         self.combo_version = ctk.CTkComboBox(self.panel_inferior, values=["APA 7a Edición", "APA 6a Edición"], command=self.evaluar_version_apa)
         self.combo_version.grid(row=0, column=0, padx=(0, 10), sticky="w")
         
-        # Opciones de fuente permitidas en APA 7
         fuentes_apa7 = ["Times New Roman 12", "Arial 11", "Calibri 11", "Georgia 11"]
         self.combo_fuente = ctk.CTkComboBox(self.panel_inferior, values=fuentes_apa7, width=170)
         self.combo_fuente.grid(row=0, column=1, padx=(0, 10), sticky="w")
-        self.combo_fuente.set("Times New Roman 12") # Valor por defecto
+        self.combo_fuente.set("Times New Roman 12") 
 
         self.btn_cargar = ctk.CTkButton(self.panel_inferior, text="Explorar y Cargar .docx", command=self.cargar_archivo)
         self.btn_cargar.grid(row=0, column=3, padx=10, sticky="e")
@@ -108,14 +153,7 @@ class DocumentsGoldenSuite(ctk.CTk):
         self.btn_procesar = ctk.CTkButton(self.panel_inferior, text="Aplicar Formato", state="disabled", fg_color="green", hover_color="darkgreen", command=self.ejecutar_formateo)
         self.btn_procesar.grid(row=0, column=4, padx=(10, 0), sticky="e")
 
-    def evaluar_version_apa(self, seleccion):
-        # Si se selecciona APA 6, se bloquea la fuente a Times New Roman 12 obligatoriamente
-        if "6a" in seleccion:
-            self.combo_fuente.set("Times New Roman 12")
-            self.combo_fuente.configure(state="disabled")
-        else:
-            self.combo_fuente.configure(state="normal")
-
+    # --- METODOS DE INTERFAZ Y SIDEBAR ---
     def cambiar_tema(self, nuevo_modo: str):
         mapa_temas = {"Sistema": "System", "Oscuro": "Dark", "Claro": "Light"}
         ctk.set_appearance_mode(mapa_temas[nuevo_modo])
@@ -126,14 +164,32 @@ class DocumentsGoldenSuite(ctk.CTk):
         else:
             self.ventana_guia.focus()
 
+    def evaluar_version_apa(self, seleccion):
+        if "6a" in seleccion:
+            self.combo_fuente.set("Times New Roman 12")
+            self.combo_fuente.configure(state="disabled")
+        else:
+            self.combo_fuente.configure(state="normal")
+
+    # --- LOGICA DE REFERENCIAS ---
+    def añadir_referencia_lista(self):
+        texto = self.txt_nueva_ref.get().strip()
+        if texto:
+            self.nuevas_referencias.append(texto)
+            self.txt_nueva_ref.delete(0, 'end') # Limpiar el input
+            messagebox.showinfo("Agregada", f"Referencia guardada en memoria. Total: {len(self.nuevas_referencias)}\nSe inyectará al procesar el documento.")
+        else:
+            messagebox.showwarning("Aviso", "El campo de referencia está vacío.")
+
+    # --- LOGICA DE ARCHIVO ---
     def cargar_archivo(self):
         ruta_archivo = filedialog.askopenfilename(
             title="Seleccionar documento de Word",
             filetypes=[("Documentos de Word", "*.docx")]
         )
-        
         if ruta_archivo:
             self.lbl_subtitulo.configure(text=f"Archivo activo: {ruta_archivo}")
+            self.nuevas_referencias = [] # Limpiar referencias viejas si carga nuevo archivo
             try:
                 parser = DocumentParser(ruta_archivo)
                 self.datos_documento = parser.parse_document()
@@ -151,12 +207,11 @@ class DocumentsGoldenSuite(ctk.CTk):
                 
                 self.btn_procesar.configure(state="normal")
                 self.btn_restaurar.configure(state="normal")
-                
                 self.cambiar_pagina(self.opciones_paginas[0])
-                
             except Exception as e:
                 messagebox.showerror("Error de Lectura", str(e))
 
+    # --- METODOS DE VISOR ---
     def actualizar_botones_paginacion(self, indice_actual):
         self.btn_prev.configure(state="normal" if indice_actual > 0 else "disabled")
         self.btn_next.configure(state="normal" if indice_actual < len(self.opciones_paginas) - 1 else "disabled")
@@ -218,7 +273,7 @@ class DocumentsGoldenSuite(ctk.CTk):
             combo_estilo.set(estilo_traducido)
             combo_estilo.grid(row=0, column=0, sticky="nw", padx=(15, 15), pady=15)
             
-            lbl_texto = ctk.CTkLabel(fila_frame, text=item["preview_text"], anchor="nw", justify="left", wraplength=500)
+            lbl_texto = ctk.CTkLabel(fila_frame, text=item["preview_text"], anchor="nw", justify="left", wraplength=450)
             lbl_texto.grid(row=0, column=1, sticky="nsew", padx=(0, 15), pady=15)
 
     def ejecutar_formateo(self):
@@ -242,17 +297,13 @@ class DocumentsGoldenSuite(ctk.CTk):
             fin = inicio + self.parrafos_por_pagina
             indices_a_procesar = [p["id"] for p in self.datos_documento[inicio:fin]]
         else:
-            messagebox.showwarning(
-                "Aviso de Automatización",
-                "Se aplicará el formato global. Tenga en cuenta que la detección automática "
-                "de títulos se basa en los estilos actuales de Word; si un título no fue "
-                "etiquetado correctamente en el visor, el resultado podría no ser exacto."
-            )
-
+            if self.nuevas_referencias:
+                messagebox.showinfo("Inyección de Referencias", f"Se ha detectado que agregó {len(self.nuevas_referencias)} referencia(s) nueva(s). Estas se añadirán automáticamente al final del documento.")
+            
         try:
             ruta_activa = self.lbl_subtitulo.cget("text").replace("Archivo activo: ", "")
-            # Se añade la fuente al inicializador del Formatter
-            formatter = APAFormatter(ruta_activa, version, fuente, self.datos_documento, ESTILOS_INVERSOS)
+            # Pasamos las nuevas referencias al motor
+            formatter = APAFormatter(ruta_activa, version, fuente, self.datos_documento, ESTILOS_INVERSOS, self.nuevas_referencias)
             resultado = formatter.procesar(solo_indices=indices_a_procesar)
             
             messagebox.showinfo("Éxito", f"Documento generado exitosamente en:\n{resultado}")
