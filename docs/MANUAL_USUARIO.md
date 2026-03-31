@@ -1,6 +1,3 @@
-Este archivo guía al usuario final paso a paso. Cópialo y pégalo en el archivo correspondiente dentro de tu carpeta `docs`.
-
-```markdown
 # Manual de Usuario: Formateador APA Auto
 
 Bienvenido a la herramienta de formateo APA de Documents Golden Suite. Este manual detalla cómo procesar un documento `.docx` en bruto para adaptarlo a los estándares de la American Psychological Association.
@@ -9,7 +6,7 @@ Bienvenido a la herramienta de formateo APA de Documents Golden Suite. Este manu
 
 Para comenzar, seleccione la opción "Explorar y Cargar .docx" en el panel inferior. La aplicación leerá la estructura de su documento y la mostrará en el **Visor Lógico**.
 
-![Visor Lógico Paginado](docs/assets/logical_viewer.png)
+![Visor Lógico Paginado](assets/logical_viewer.png)
 
 * **Paginación Virtual:** Para mantener un rendimiento óptimo, los párrafos se agrupan en bloques. Utilice los controles `<` y `>` para navegar por su documento.
 * **Mapeo de Estilos:** A la izquierda de cada fragmento de texto verá una lista desplegable. El programa intenta detectar automáticamente si el texto es un Párrafo Normal o un Título basándose en los metadatos de Word.
@@ -21,7 +18,7 @@ Las normas APA requieren que la bibliografía tenga "Sangría Francesa". Puede m
 1. Si sus referencias ya están en el texto, asígneles el estilo **"Referencia"** en el Visor Lógico.
 2. Si desea agregar referencias nuevas, utilice el inyector ubicado debajo del visor.
 
-![Inyector de Referencias](docs\assets\reference_injector.png)
+![Inyector de Referencias](assets/reference_injector.png)
 
 Pegue su referencia sin formato en el cuadro de texto y haga clic en **"+ Añadir Referencia"**. El sistema las guardará en memoria y creará automáticamente una hoja de Bibliografía al final del documento procesado.
 
@@ -39,4 +36,4 @@ El sistema le preguntará si desea aplicar el formato a la página actual del vi
 
 Si tiene dudas sobre qué nivel de título asignar en el Visor Lógico, puede consultar la guía integrada en cualquier momento haciendo clic en el botón **"Ver Guía APA"** ubicado en la esquina superior derecha.
 
-![Ventana de Guía APA](docs/assets/apa_guide.png)
+![Ventana de Guía APA](assets/apa_guide.png)
