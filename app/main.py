@@ -4,7 +4,6 @@ from tkinter import filedialog
 import tkinter.messagebox as messagebox
 import math
 
-# Importaciones de nuestros modulos
 from core.document_parser import DocumentParser
 from core.apa_formatter import APAFormatter
 from ui.apa_guide import APAGuideWindow
@@ -12,20 +11,22 @@ from ui.apa_guide import APAGuideWindow
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
+# Se agregaron los nuevos formatos estructurales
 TRADUCCION_ESTILOS = {
     "Normal": "Párrafo Normal",
     "Heading 1": "Título 1",
     "Heading 2": "Título 2",
     "Heading 3": "Título 3",
     "Title": "Título Principal",
-    "Subtitle": "Subtítulo"
+    "Subtitle": "Subtítulo",
+    "Reference": "Referencia",
+    "Block Quote": "Cita en Bloque"
 }
-# Variable requerida para el motor de formateo
 ESTILOS_INVERSOS = {v: k for k, v in TRADUCCION_ESTILOS.items()}
 OPCIONES_ESTILOS_ESPANOL = list(TRADUCCION_ESTILOS.values())
 
 class DocumentsGoldenSuite(ctk.CTk):
-    def __init__(self): # <--- Este es el __init__
+    def __init__(self):
         super().__init__()
 
         self.datos_documento = []
@@ -33,8 +34,8 @@ class DocumentsGoldenSuite(ctk.CTk):
         self.ventana_guia = None
 
         self.title("Documents Golden Suite - Formateador APA")
-        self.geometry("900x650")
-        self.minsize(800, 500)
+        self.geometry("950x650")
+        self.minsize(850, 500)
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(3, weight=1)
@@ -60,7 +61,7 @@ class DocumentsGoldenSuite(ctk.CTk):
         self.lbl_subtitulo = ctk.CTkLabel(self, text="Selecciona un documento .docx para analizar y aplicar formato", text_color="gray")
         self.lbl_subtitulo.grid(row=1, column=0, padx=20, pady=(0, 10), sticky="ew")
 
-        # 2. Barra de Paginacion Mejorada
+        # 2. Barra de Paginacion
         self.paginacion_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.paginacion_frame.grid(row=2, column=0, padx=20, pady=(0, 5), sticky="ew")
         self.paginacion_frame.grid_columnconfigure(4, weight=1) 
@@ -87,23 +88,34 @@ class DocumentsGoldenSuite(ctk.CTk):
         self.lbl_placeholder = ctk.CTkLabel(self.visor_frame, text="Carga un documento para visualizar la estructura aquí.")
         self.lbl_placeholder.pack(pady=50)
 
-        # 4. Panel Inferior
+        # 4. Panel Inferior Mejorado (Seleccion de Version y Fuente)
         self.panel_inferior = ctk.CTkFrame(self, fg_color="transparent")
         self.panel_inferior.grid(row=4, column=0, padx=20, pady=20, sticky="ew")
-        self.panel_inferior.grid_columnconfigure(0, weight=1)
-        self.panel_inferior.grid_columnconfigure(1, weight=1)
+        self.panel_inferior.grid_columnconfigure(2, weight=1)
 
-        self.combo_version = ctk.CTkComboBox(self.panel_inferior, values=["APA 7a Edición", "APA 6a Edición"])
+        self.combo_version = ctk.CTkComboBox(self.panel_inferior, values=["APA 7a Edición", "APA 6a Edición"], command=self.evaluar_version_apa)
         self.combo_version.grid(row=0, column=0, padx=(0, 10), sticky="w")
+        
+        # Opciones de fuente permitidas en APA 7
+        fuentes_apa7 = ["Times New Roman 12", "Arial 11", "Calibri 11", "Georgia 11"]
+        self.combo_fuente = ctk.CTkComboBox(self.panel_inferior, values=fuentes_apa7, width=170)
+        self.combo_fuente.grid(row=0, column=1, padx=(0, 10), sticky="w")
+        self.combo_fuente.set("Times New Roman 12") # Valor por defecto
 
         self.btn_cargar = ctk.CTkButton(self.panel_inferior, text="Explorar y Cargar .docx", command=self.cargar_archivo)
-        self.btn_cargar.grid(row=0, column=1, padx=10, sticky="e")
+        self.btn_cargar.grid(row=0, column=3, padx=10, sticky="e")
 
-        # AQUI ES DONDE SE CONECTA EL BOTON DE PROCESAR
         self.btn_procesar = ctk.CTkButton(self.panel_inferior, text="Aplicar Formato", state="disabled", fg_color="green", hover_color="darkgreen", command=self.ejecutar_formateo)
-        self.btn_procesar.grid(row=0, column=2, padx=(10, 0), sticky="e")
+        self.btn_procesar.grid(row=0, column=4, padx=(10, 0), sticky="e")
 
-    # --- METODOS DE INTERFAZ ---
+    def evaluar_version_apa(self, seleccion):
+        # Si se selecciona APA 6, se bloquea la fuente a Times New Roman 12 obligatoriamente
+        if "6a" in seleccion:
+            self.combo_fuente.set("Times New Roman 12")
+            self.combo_fuente.configure(state="disabled")
+        else:
+            self.combo_fuente.configure(state="normal")
+
     def cambiar_tema(self, nuevo_modo: str):
         mapa_temas = {"Sistema": "System", "Oscuro": "Dark", "Claro": "Light"}
         ctk.set_appearance_mode(mapa_temas[nuevo_modo])
@@ -114,7 +126,6 @@ class DocumentsGoldenSuite(ctk.CTk):
         else:
             self.ventana_guia.focus()
 
-    # --- METODOS DE LOGICA DE ARCHIVO ---
     def cargar_archivo(self):
         ruta_archivo = filedialog.askopenfilename(
             title="Seleccionar documento de Word",
@@ -146,7 +157,6 @@ class DocumentsGoldenSuite(ctk.CTk):
             except Exception as e:
                 messagebox.showerror("Error de Lectura", str(e))
 
-    # --- METODOS DE PAGINACION Y ACTUALIZACION ---
     def actualizar_botones_paginacion(self, indice_actual):
         self.btn_prev.configure(state="normal" if indice_actual > 0 else "disabled")
         self.btn_next.configure(state="normal" if indice_actual < len(self.opciones_paginas) - 1 else "disabled")
@@ -203,7 +213,6 @@ class DocumentsGoldenSuite(ctk.CTk):
             if estilo_traducido not in lista_opciones:
                 lista_opciones.append(estilo_traducido)
                 
-            # AQUI SE CONECTA LA ACCION PARA GUARDAR LOS CAMBIOS MANUALES DEL USUARIO
             combo_estilo = ctk.CTkComboBox(fila_frame, values=lista_opciones, width=160, 
                                            command=lambda v, i=item: self.guardar_cambio_estilo(v, i))
             combo_estilo.set(estilo_traducido)
@@ -212,9 +221,9 @@ class DocumentsGoldenSuite(ctk.CTk):
             lbl_texto = ctk.CTkLabel(fila_frame, text=item["preview_text"], anchor="nw", justify="left", wraplength=500)
             lbl_texto.grid(row=0, column=1, sticky="nsew", padx=(0, 15), pady=15)
 
-    # --- METODO PRINCIPAL DE EJECUCION ---
     def ejecutar_formateo(self):
         version = self.combo_version.get()
+        fuente = self.combo_fuente.get()
         
         pregunta = messagebox.askyesnocancel(
             "Alcance del Formato",
@@ -242,7 +251,8 @@ class DocumentsGoldenSuite(ctk.CTk):
 
         try:
             ruta_activa = self.lbl_subtitulo.cget("text").replace("Archivo activo: ", "")
-            formatter = APAFormatter(ruta_activa, version, self.datos_documento, ESTILOS_INVERSOS)
+            # Se añade la fuente al inicializador del Formatter
+            formatter = APAFormatter(ruta_activa, version, fuente, self.datos_documento, ESTILOS_INVERSOS)
             resultado = formatter.procesar(solo_indices=indices_a_procesar)
             
             messagebox.showinfo("Éxito", f"Documento generado exitosamente en:\n{resultado}")
