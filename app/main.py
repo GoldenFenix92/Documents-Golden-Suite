@@ -3,11 +3,24 @@ import tkinter as tk
 from tkinter import filedialog
 import tkinter.messagebox as messagebox
 import math
+import sys
+import os
 from PIL import Image
 
 from core.document_parser import DocumentParser
 from core.apa_formatter import APAFormatter
 from ui.apa_guide import APAGuideWindow
+
+# --- FUNCION CRUCIAL PARA PYINSTALLER ---
+def obtener_ruta_recurso(ruta_relativa):
+    """Obtiene la ruta absoluta al recurso, compatible con el entorno de desarrollo y PyInstaller"""
+    try:
+        # PyInstaller crea una carpeta temporal en sys._MEIPASS
+        ruta_base = sys._MEIPASS
+    except Exception:
+        ruta_base = os.path.abspath(".")
+    return os.path.join(ruta_base, ruta_relativa)
+# ----------------------------------------
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
@@ -44,10 +57,11 @@ class DocumentsGoldenSuite(ctk.CTk):
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
         self.sidebar_frame.grid_rowconfigure(4, weight=1) # Empuja el selector de temas hacia abajo
 
-        # Espacio para el Logo (Instrucciones de como cambiarlo mas abajo)
+        # Espacio para el Logo con ruta segura para el .exe
+        ruta_logo = obtener_ruta_recurso("assets/logo.png")
         logo_img = ctk.CTkImage(
-            light_image=Image.open("assets/logo.png"),
-            dark_image=Image.open("assets/logo.png"), 
+            light_image=Image.open(ruta_logo),
+            dark_image=Image.open(ruta_logo), 
             size=(120, 120) # Tamaño del logo en pixeles
         )
         
