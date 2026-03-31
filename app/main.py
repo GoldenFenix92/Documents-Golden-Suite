@@ -1,9 +1,13 @@
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog
-from core.document_parser import DocumentParser
-from ui.apa_guide import APAGuideWindow
+import tkinter.messagebox as messagebox
 import math
+
+# Importaciones de nuestros modulos
+from core.document_parser import DocumentParser
+from core.apa_formatter import APAFormatter
+from ui.apa_guide import APAGuideWindow
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
@@ -16,15 +20,17 @@ TRADUCCION_ESTILOS = {
     "Title": "Título Principal",
     "Subtitle": "Subtítulo"
 }
+# Variable requerida para el motor de formateo
+ESTILOS_INVERSOS = {v: k for k, v in TRADUCCION_ESTILOS.items()}
 OPCIONES_ESTILOS_ESPANOL = list(TRADUCCION_ESTILOS.values())
 
 class DocumentsGoldenSuite(ctk.CTk):
-    def __init__(self):
+    def __init__(self): # <--- Este es el __init__
         super().__init__()
 
         self.datos_documento = []
         self.parrafos_por_pagina = 10
-        self.ventana_guia = None # Referencia a la ventana secundaria
+        self.ventana_guia = None
 
         self.title("Documents Golden Suite - Formateador APA")
         self.geometry("900x650")
@@ -41,7 +47,6 @@ class DocumentsGoldenSuite(ctk.CTk):
         self.lbl_titulo = ctk.CTkLabel(self.top_frame, text="Formateador APA Auto", font=ctk.CTkFont(size=24, weight="bold"))
         self.lbl_titulo.grid(row=0, column=0, sticky="w")
 
-        # Controles superiores (Boton de guia y selector de tema)
         self.top_controls = ctk.CTkFrame(self.top_frame, fg_color="transparent")
         self.top_controls.grid(row=0, column=1, sticky="e")
         
@@ -58,7 +63,7 @@ class DocumentsGoldenSuite(ctk.CTk):
         # 2. Barra de Paginacion Mejorada
         self.paginacion_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.paginacion_frame.grid(row=2, column=0, padx=20, pady=(0, 5), sticky="ew")
-        self.paginacion_frame.grid_columnconfigure(4, weight=1) # Espacio flexible a la derecha
+        self.paginacion_frame.grid_columnconfigure(4, weight=1) 
         
         self.lbl_pagina_actual = ctk.CTkLabel(self.paginacion_frame, text="Hoja:", font=ctk.CTkFont(weight="bold"))
         self.lbl_pagina_actual.grid(row=0, column=0, padx=(0, 10))
@@ -94,7 +99,8 @@ class DocumentsGoldenSuite(ctk.CTk):
         self.btn_cargar = ctk.CTkButton(self.panel_inferior, text="Explorar y Cargar .docx", command=self.cargar_archivo)
         self.btn_cargar.grid(row=0, column=1, padx=10, sticky="e")
 
-        self.btn_procesar = ctk.CTkButton(self.panel_inferior, text="Aplicar Formato", state="disabled", fg_color="green", hover_color="darkgreen")
+        # AQUI ES DONDE SE CONECTA EL BOTON DE PROCESAR
+        self.btn_procesar = ctk.CTkButton(self.panel_inferior, text="Aplicar Formato", state="disabled", fg_color="green", hover_color="darkgreen", command=self.ejecutar_formateo)
         self.btn_procesar.grid(row=0, column=2, padx=(10, 0), sticky="e")
 
     # --- METODOS DE INTERFAZ ---
@@ -138,10 +144,9 @@ class DocumentsGoldenSuite(ctk.CTk):
                 self.cambiar_pagina(self.opciones_paginas[0])
                 
             except Exception as e:
-                import tkinter.messagebox as messagebox
                 messagebox.showerror("Error de Lectura", str(e))
 
-    # --- METODOS DE PAGINACION ---
+    # --- METODOS DE PAGINACION Y ACTUALIZACION ---
     def actualizar_botones_paginacion(self, indice_actual):
         self.btn_prev.configure(state="normal" if indice_actual > 0 else "disabled")
         self.btn_next.configure(state="normal" if indice_actual < len(self.opciones_paginas) - 1 else "disabled")
@@ -161,7 +166,6 @@ class DocumentsGoldenSuite(ctk.CTk):
             self.cambiar_pagina(nueva_pagina)
 
     def restaurar_pagina(self):
-        # Vuelve a dibujar la pagina actual leyendo los datos originales de self.datos_documento
         self.cambiar_pagina(self.combo_paginas.get())
 
     def limpiar_visor(self):
@@ -170,6 +174,9 @@ class DocumentsGoldenSuite(ctk.CTk):
 
     def traducir_estilo(self, estilo_ingles):
         return TRADUCCION_ESTILOS.get(estilo_ingles, estilo_ingles)
+
+    def guardar_cambio_estilo(self, nuevo_estilo, item_data):
+        item_data["current_style"] = nuevo_estilo
 
     def cambiar_pagina(self, seleccion: str):
         numero_pagina = int(seleccion.split(" ")[1])
@@ -196,12 +203,51 @@ class DocumentsGoldenSuite(ctk.CTk):
             if estilo_traducido not in lista_opciones:
                 lista_opciones.append(estilo_traducido)
                 
-            combo_estilo = ctk.CTkComboBox(fila_frame, values=lista_opciones, width=160)
+            # AQUI SE CONECTA LA ACCION PARA GUARDAR LOS CAMBIOS MANUALES DEL USUARIO
+            combo_estilo = ctk.CTkComboBox(fila_frame, values=lista_opciones, width=160, 
+                                           command=lambda v, i=item: self.guardar_cambio_estilo(v, i))
             combo_estilo.set(estilo_traducido)
             combo_estilo.grid(row=0, column=0, sticky="nw", padx=(15, 15), pady=15)
             
             lbl_texto = ctk.CTkLabel(fila_frame, text=item["preview_text"], anchor="nw", justify="left", wraplength=500)
             lbl_texto.grid(row=0, column=1, sticky="nsew", padx=(0, 15), pady=15)
+
+    # --- METODO PRINCIPAL DE EJECUCION ---
+    def ejecutar_formateo(self):
+        version = self.combo_version.get()
+        
+        pregunta = messagebox.askyesnocancel(
+            "Alcance del Formato",
+            "¿Desea aplicar el formato a TODO el documento?\n\n"
+            "SÍ: Todo el documento (Recomendado).\n"
+            "NO: Solo los párrafos visibles en esta página.\n"
+            "CANCELAR: Abortar proceso."
+        )
+
+        if pregunta is None: return 
+
+        indices_a_procesar = None
+        if pregunta is False: 
+            num_pag = int(self.combo_paginas.get().split(" ")[1])
+            inicio = (num_pag - 1) * self.parrafos_por_pagina
+            fin = inicio + self.parrafos_por_pagina
+            indices_a_procesar = [p["id"] for p in self.datos_documento[inicio:fin]]
+        else:
+            messagebox.showwarning(
+                "Aviso de Automatización",
+                "Se aplicará el formato global. Tenga en cuenta que la detección automática "
+                "de títulos se basa en los estilos actuales de Word; si un título no fue "
+                "etiquetado correctamente en el visor, el resultado podría no ser exacto."
+            )
+
+        try:
+            ruta_activa = self.lbl_subtitulo.cget("text").replace("Archivo activo: ", "")
+            formatter = APAFormatter(ruta_activa, version, self.datos_documento, ESTILOS_INVERSOS)
+            resultado = formatter.procesar(solo_indices=indices_a_procesar)
+            
+            messagebox.showinfo("Éxito", f"Documento generado exitosamente en:\n{resultado}")
+        except Exception as e:
+            messagebox.showerror("Error de Formateo", f"No se pudo procesar el archivo: {str(e)}")
 
 if __name__ == "__main__":
     app = DocumentsGoldenSuite()
