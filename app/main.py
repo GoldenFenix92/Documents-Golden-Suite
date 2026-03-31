@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog
+from core.document_parser import DocumentParser
 
 # Configuracion global del tema inicial
 ctk.set_appearance_mode("System")
@@ -66,16 +67,54 @@ class DocumentsGoldenSuite(ctk.CTk):
         ctk.set_appearance_mode(nuevo_modo)
 
     def cargar_archivo(self):
-        # Abre el explorador de archivos nativo
         ruta_archivo = filedialog.askopenfilename(
             title="Seleccionar documento de Word",
             filetypes=[("Documentos de Word", "*.docx")]
         )
         
         if ruta_archivo:
-            print(f"Archivo seleccionado: {ruta_archivo}")
-            self.lbl_placeholder.configure(text=f"Archivo cargado:\n{ruta_archivo}\n\n(Pronto: Analisis de estilos en esta area)")
-            self.btn_procesar.configure(state="normal")
+            self.lbl_subtitulo.configure(text=f"Archivo activo: {ruta_archivo}")
+            
+            try:
+                # 1. Procesar el documento
+                parser = DocumentParser(ruta_archivo)
+                datos_parrafos = parser.parse_document()
+                
+                # 2. Limpiar el Visor Logico
+                for widget in self.visor_frame.winfo_children():
+                    widget.destroy()
+                
+                # 3. Poblar el Visor Logico
+                if not datos_parrafos:
+                    ctk.CTkLabel(self.visor_frame, text="El documento esta vacio.").pack(pady=20)
+                    return
+
+                # Lista de estilos comunes permitidos para el mapeo manual
+                estilos_permitidos = ["Normal", "Heading 1", "Heading 2", "Heading 3", "Title", "Subtitle"]
+
+                for item in datos_parrafos:
+                    fila_frame = ctk.CTkFrame(self.visor_frame, fg_color="transparent")
+                    fila_frame.pack(fill="x", pady=2, padx=5)
+                    fila_frame.grid_columnconfigure(0, weight=1)
+                    
+                    # Etiqueta con el texto truncado
+                    lbl_texto = ctk.CTkLabel(fila_frame, text=item["preview_text"], anchor="w", justify="left")
+                    lbl_texto.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+                    
+                    # Combobox con el estilo detectado
+                    estilo_actual = item["current_style"]
+                    if estilo_actual not in estilos_permitidos:
+                        estilos_permitidos.append(estilo_actual) # Agregar si tiene un estilo raro
+                        
+                    combo_estilo = ctk.CTkComboBox(fila_frame, values=estilos_permitidos, width=150)
+                    combo_estilo.set(estilo_actual)
+                    combo_estilo.grid(row=0, column=1, sticky="e")
+                
+                self.btn_procesar.configure(state="normal")
+                
+            except Exception as e:
+                import tkinter.messagebox as messagebox
+                messagebox.showerror("Error de Lectura", str(e))
 
 if __name__ == "__main__":
     app = DocumentsGoldenSuite()
