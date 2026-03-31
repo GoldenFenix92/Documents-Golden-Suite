@@ -21,7 +21,7 @@ Las normas APA requieren que la bibliografía tenga "Sangría Francesa". Puede m
 1. Si sus referencias ya están en el texto, asígneles el estilo **"Referencia"** en el Visor Lógico.
 2. Si desea agregar referencias nuevas, utilice el inyector ubicado debajo del visor.
 
-![Inyector de Referencias](docs/assets/reference_injector.png)
+![Inyector de Referencias](docs\assets\reference_injector.png)
 
 Pegue su referencia sin formato en el cuadro de texto y haga clic en **"+ Añadir Referencia"**. El sistema las guardará en memoria y creará automáticamente una hoja de Bibliografía al final del documento procesado.
 
